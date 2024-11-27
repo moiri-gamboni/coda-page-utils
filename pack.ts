@@ -191,11 +191,39 @@ pack.addFormula({
       description: "Cover image to use",
       optional: true
     }),
+    coda.makeParameter({
+      type: coda.ParameterType.String,
+      name: "content",
+      description: "Content of the page in Markdown format",
+      optional: true
+    }),
   ],
   resultType: coda.ValueType.String,
   isAction: true,
-  execute: async function ([name, parentPageId, subtitle, iconName, imageUrl], context) {
-    let payload = { name, parentPageId, subtitle, iconName, imageUrl };
+  execute: async function ([name, parentPageId, subtitle, iconName, imageUrl, content], context) {
+    let payload: { 
+      name: string; 
+      parentPageId: string; 
+      subtitle: string; 
+      iconName: string; 
+      imageUrl: string;
+      pageContent?: {
+        type: "canvas";
+        canvasContent: {
+          content: string;
+          format: "markdown";
+        };
+      };
+    } = { name, parentPageId, subtitle, iconName, imageUrl };
+    if (content) {
+      payload.pageContent = {
+        type: "canvas",
+        canvasContent: {
+          content,
+          format: "markdown"
+        }
+      };
+    }
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined) {
         delete payload[k];
