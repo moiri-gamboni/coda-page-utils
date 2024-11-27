@@ -1,3 +1,7 @@
+# Secrets
+.coda.json
+.coda-pack.json
+
 # Logs
 logs
 *.log
