@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "upload": "npx coda upload pack.ts --timerStrategy=fake",
+    "publish": "npx coda release pack.ts --timerStrategy=fake"
   },
   "repository": {
     "type": "git",
