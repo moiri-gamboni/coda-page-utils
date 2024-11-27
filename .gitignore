@@ -2,6 +2,9 @@
 .coda.json
 .coda-pack.json
 
+# Coda build
+_upload_build/
+
 # Logs
 logs
 *.log
