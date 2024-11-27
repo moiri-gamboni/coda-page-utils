@@ -313,6 +313,7 @@ pack.addFormula({
       body: JSON.stringify({ outputFormat: "markdown" }),
       headers: { "Content-Type": "application/json" },
     });
+    console.log("Export response:", exportResponse.body);
 
     // Step 3: Poll until export is complete
     const requestId = exportResponse.body.id;
@@ -322,9 +323,11 @@ pack.addFormula({
         method: "GET",
         url: `${context.endpoint}/pages/${encodeURIComponent(sourcePageIdOrName)}/export/${requestId}`,
       });
+      console.log("Poll status response:", statusResponse.body);
 
       if (statusResponse.body.status === "complete") {
         downloadLink = statusResponse.body.downloadLink;
+        console.log("Download link:", downloadLink);
         break;
       }
 
