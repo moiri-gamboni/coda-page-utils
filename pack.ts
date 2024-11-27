@@ -310,7 +310,7 @@ pack.addFormula({
     const exportResponse = await context.fetcher.fetch({
       method: "POST",
       url: `${context.endpoint}/pages/${encodeURIComponent(sourcePageIdOrName)}/export`,
-      body: JSON.stringify({ outputFormat: "markdown" }),
+      body: JSON.stringify({ outputFormat: "html" }),
       headers: { "Content-Type": "application/json" },
     });
     console.log("Export response:", exportResponse.body);
