@@ -269,3 +269,108 @@ pack.addFormula({
     return result.body.id
   },
 });
+pack.addFormula({
+  name: "CopyPage",
+  description:
+    "Create a copy of an existing page, including its content and properties",
+  parameters: [
+    coda.makeParameter({
+      type: coda.ParameterType.String,
+      name: "sourcePageIdOrName",
+      description:
+        "ID or name of the page to copy. Prefer using IDs because names can change and there can be multiple pages with the same name.",
+      autocomplete: PAGE_SEARCH_FN,
+    }),
+    coda.makeParameter({
+      type: coda.ParameterType.String,
+      name: "newName",
+      description: "Name for the copied page",
+    }),
+    coda.makeParameter({
+      type: coda.ParameterType.String,
+      name: "parentPageId",
+      description: "Optional parent page for the copy",
+      optional: true,
+      autocomplete: PAGE_SEARCH_FN,
+    }),
+  ],
+  resultType: coda.ValueType.String,
+  isAction: true,
+  execute: async function (
+    [sourcePageIdOrName, newName, parentPageId],
+    context
+  ) {
+    // Step 1: Get source page details
+    const sourcePage = await context.fetcher.fetch({
+      method: "GET",
+      url: `${context.endpoint}/pages/${encodeURIComponent(sourcePageIdOrName)}`,
+    });
+
+    // Step 2: Begin content export of source page
+    const exportResponse = await context.fetcher.fetch({
+      method: "POST",
+      url: `${context.endpoint}/pages/${encodeURIComponent(sourcePageIdOrName)}/export`,
+      body: JSON.stringify({ outputFormat: "markdown" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    // Step 3: Poll until export is complete
+    const requestId = exportResponse.body.id;
+    let downloadLink;
+    while (true) {
+      const statusResponse = await context.fetcher.fetch({
+        method: "GET",
+        url: `${context.endpoint}/pages/${encodeURIComponent(sourcePageIdOrName)}/export/${requestId}`,
+      });
+
+      if (statusResponse.body.status === "complete") {
+        downloadLink = statusResponse.body.downloadLink;
+        break;
+      }
+
+      // Wait before polling again
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    // Step 4: Get the exported content
+    const contentResponse = await context.fetcher.fetch({
+      method: "GET",
+      url: downloadLink,
+    });
+    const content = contentResponse.body;
+
+    // Step 5: Create new page with content and properties from source
+    const createPayload = {
+      name: newName,
+      parentPageId: parentPageId,
+      subtitle: sourcePage.body.subtitle,
+      iconName: sourcePage.body.icon?.name,
+      imageUrl: sourcePage.body.image?.browserLink,
+      pageContent: {
+        type: "canvas",
+        canvasContent: {
+          format: "markdown",
+          content: content,
+        },
+      },
+    };
+
+    // Remove undefined properties
+    Object.keys(createPayload).forEach((k) => {
+      if (createPayload[k] === undefined) {
+        delete createPayload[k];
+      }
+    });
+
+    const result = await context.fetcher.fetch({
+      method: "POST",
+      url: `${context.endpoint}/pages`,
+      body: JSON.stringify(createPayload),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return result.body.id;
+  },
+});
