@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "upload": "npx coda upload pack.ts --timerStrategy=fake",
-    "publish": "npx coda release pack.ts --timerStrategy=fake"
+    "publish": "npx coda release pack.ts"
   },
   "repository": {
     "type": "git",
