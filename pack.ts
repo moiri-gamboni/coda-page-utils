@@ -3,84 +3,8 @@ import * as coda from "@codahq/packs-sdk";
 export const pack = coda.newPack();
 pack.addNetworkDomain("coda.io");
 
-pack.setUserAuthentication({
-  type: coda.AuthenticationType.CodaApiHeaderBearerToken,
-  shouldAutoAuthSetup: false,
-  defaultConnectionRequirement: coda.ConnectionRequirement.Required,
-  getConnectionName: async (context) => {
-    // The connection is for maker+doc, so figure out
-    let meData = await context.fetcher.fetch({
-      method: 'GET',
-      url: 'https://coda.io/apis/v1/whoami'
-    });
-
-    if (!context.endpoint) {
-      return `${meData.body.name} (${meData.body.loginId}) - no doc selected`;
-    }
-
-    let docData = await context.fetcher.fetch({
-      method: 'GET',
-      url: context.endpoint
-    });
-    
-    return `${meData.body.name} (${meData.body.loginId}) - ${docData.body.name}`;
-  },
-  postSetup: [{
-    type: coda.PostSetupType.SetEndpoint,
-    name: "SelectDoc",
-    description: "Select the doc to connect this pack to",
-    getOptions: async function (context) {
-      if (!!context.invocationLocation.docId) {
-        // Doc ID is still not removed from the SDK
-        let docId = context.invocationLocation.docId;
-
-        // Find the doc
-        let docData = await context.fetcher.fetch({
-          method: 'GET',
-          url: `https://coda.io/apis/v1/docs/${docId}`
-        });
-
-        // Get me
-        let meData = await context.fetcher.fetch({
-          method: 'GET',
-          url: 'https://coda.io/apis/v1/whoami'
-        });
-
-        // If I'm not the owner of the doc, crash
-        if (docData.body.owner !== meData.body.loginId) {
-          throw new coda.UserVisibleError("You are not the owner of this doc. Please ask the owner to install this pack on this doc");
-        }
-
-        return [{
-          display: docData.body.name,
-          value: docData.body.href
-        }];
-      }
-
-      // Otherwise we don't have the doc ID in the context anymore, so just list all docs this user is owner of and collect until we have more pages
-      let docItems : coda.MetadataFormulaObjectResultType[] = [];
-      let continuationHref : string;
-      do {
-        let response = await context.fetcher.fetch({
-          method: "GET",
-          url: continuationHref || "https://coda.io/apis/v1/docs?isOwner=true&limit=100",
-          cacheTtlSecs: 0
-        });
-        continuationHref = response.body.nextPageLink;
-
-        for (let doc of response.body.items) {
-          docItems.push({
-            display: doc.name,
-            value: doc.href
-          });
-        }
-
-        console.log(continuationHref);
-      } while (!!continuationHref);
-
-      return docItems;
-    }
-  }]
+pack.setSystemAuthentication({
+  type: coda.AuthenticationType.HeaderBearerToken,
 });
 
 const PAGE_SEARCH_FN = async (context, search, parameters) => {
@@ -90,7 +14,7 @@ const PAGE_SEARCH_FN = async (context, search, parameters) => {
   do {
     let response = await context.fetcher.fetch({
       method: "GET",
-      url: continuationHref || `${context.endpoint}/pages?limit=100`,
+      url: continuationHref || `https://coda.io/apis/v1/docs/${context.invocationLocation.docId}/pages?limit=100`,
       cacheTtlSecs: 0
     });
     continuationHref = response.body.nextPageLink;
@@ -143,7 +67,7 @@ pack.addFormula({
   execute: async function ([limit], context) {
     const response = await context.fetcher.fetch({
       method: "GET",
-      url: coda.withQueryParams(`${context.endpoint}/pages`, {
+      url: coda.withQueryParams(`https://coda.io/apis/v1/docs/${context.invocationLocation.docId}/pages`, {
         limit: limit || 100
       }),
       cacheTtlSecs: 0
@@ -231,7 +155,7 @@ pack.addFormula({
     });
     let result = await context.fetcher.fetch({
       method: 'POST',
-      url: `${context.endpoint}/pages`,
+      url: `https://coda.io/apis/v1/docs/${context.invocationLocation.docId}/pages`,
       body: JSON.stringify(payload),
       headers: {
         'Content-Type': 'application/json'
